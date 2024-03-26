@@ -36,7 +36,7 @@ if __name__ == '__main__':
         image_bg[116:116+480, 442:442+640] = frame
 
         if num == 100:
-            cv2.imshow("100. frame budur", frame[y:y+h, x:x+w])
+            cv2.imshow("100. frame budur", frame[y+2:y+h-2, x+2:x+w-2])
             cv2.waitKey(0)
         num += 1
 
