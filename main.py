@@ -9,7 +9,7 @@ if __name__ == '__main__':
     image_bg = cv2.resize(image_bg, (1280, 720))
 
     # Creating instance of face detector model
-    model = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+    model = cv2.CascadeClassifier('models/haarcascade_frontalface_default.xml')
 
     num = 0
 
