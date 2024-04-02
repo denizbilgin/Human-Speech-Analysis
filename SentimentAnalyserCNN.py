@@ -1,10 +1,10 @@
 import time
-
 import numpy as np
 import tensorflow as tf
 import os
 import matplotlib.pyplot as plt
 import keras
+from PIL import Image
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 class SentimentAnalyserCallback(keras.callbacks.Callback):
@@ -36,38 +36,55 @@ class SentimentAnalyserCallback(keras.callbacks.Callback):
 
 
 if __name__ == '__main__':
-    emotions = ["Angry", "Disgusted", "Fearful", "Happy", "Neutral", "Sad", "Surprised"]
-    base_dir = "data/images/emotions"
+    EMOTIONS = ["Angry", "Disgusted", "Fearful", "Happy", "Neutral", "Sad", "Surprised"]
+    NUM_CLASSES = len(EMOTIONS)
+    BASE_DIR = "data/images/emotions"
+    TRAIN_DIR = os.path.join(BASE_DIR, "train")
+    TEST_DIR = os.path.join(BASE_DIR, "test")
+    IMAGE_SIZE = (48, 48)
+    BATCH_SIZE = 32
+    EPOCHS = 50
+    SAVE_MODEL = True
+    SHOW_STATISTICS = True
+    USE_SAVED_MODEL = False
 
-    print(f"Contents of train dir: {os.listdir(base_dir + '/train')}")
 
-    train_dir = os.path.join(base_dir, "train")
-    test_dir = os.path.join(base_dir, "test")
+    print(f"Contents of train dir: {os.listdir(BASE_DIR + '/train')}")
 
-    train_datagen = ImageDataGenerator(
+    datagen = ImageDataGenerator(
         rescale=1.0/255,
         horizontal_flip=True,
-        rotation_range=0.4,
+        rotation_range=20,
         shear_range=0.2,
-        zoom_range=0.1,
-        fill_mode="nearest"
+        zoom_range=0.3,
+        fill_mode="nearest",
+        validation_split=0.15
     )
     test_datagen = ImageDataGenerator(
         rescale=1.0/255
     )
 
-    train_generator = train_datagen.flow_from_directory(
-        train_dir,
-        batch_size=32,
+    train_generator = datagen.flow_from_directory(
+        TRAIN_DIR,
+        batch_size=BATCH_SIZE,
         class_mode="categorical",
-        target_size=(48, 48),
-        shuffle=True
+        target_size=IMAGE_SIZE,
+        shuffle=True,
+        subset="training"
+    )
+    validation_generator = datagen.flow_from_directory(
+        TRAIN_DIR,
+        batch_size=BATCH_SIZE,
+        class_mode="categorical",
+        target_size=IMAGE_SIZE,
+        shuffle=True,
+        subset="validation"
     )
     test_generator = test_datagen.flow_from_directory(
-        test_dir,
-        batch_size=32,
+        TEST_DIR,
+        batch_size=BATCH_SIZE,
         class_mode="categorical",
-        target_size=(48, 48),
+        target_size=IMAGE_SIZE,
         shuffle=True
     )
 
@@ -75,7 +92,7 @@ if __name__ == '__main__':
     print(f"Shape of sample batch is : {sample_batch[0].shape}")
 
     first_img = sample_batch[0][0]
-    img_label = emotions[np.where(sample_batch[1][0] == 1)[0]]
+    img_label = EMOTIONS[np.argmax(sample_batch[1][0])]
     plt.imshow(first_img)
     plt.title("First image of training set (" + img_label + ")")
     plt.axis('off')
@@ -92,7 +109,7 @@ if __name__ == '__main__':
         keras.layers.Dense(128, activation='relu'),
         keras.layers.Dense(1024, activation='relu'),
         keras.layers.Dense(512, activation='relu'),
-        keras.layers.Dense(7, activation='softmax')
+        keras.layers.Dense(NUM_CLASSES, activation='softmax')
     ])
 
     print(model.summary())
@@ -103,8 +120,9 @@ if __name__ == '__main__':
 
     history = model.fit(
         train_generator,
-        epochs=70,
-        callbacks=[SentimentAnalyserCallback(True)]
+        epochs=EPOCHS,
+        validation_data=validation_generator,
+        callbacks=[SentimentAnalyserCallback(SAVE_MODEL)]
     )
 
     loss, acc = model.evaluate(test_generator)
