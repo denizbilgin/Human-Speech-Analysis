@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-def plot_loss_accuracy(history):
+def plot_loss_accuracy(history, save_model):
     plt.figure(figsize=(10, 6))
 
     plt.title("Model Accuracy")
@@ -14,6 +14,8 @@ def plot_loss_accuracy(history):
     plt.ylabel("accuracy")
     plt.xlabel("epoch")
     plt.legend(["train", "val"], loc="upper left")
+    if save_model:
+        plt.savefig("acc-epoch.png", dpi=300)
     plt.show()
 
     plt.title("Model Loss")
@@ -22,6 +24,8 @@ def plot_loss_accuracy(history):
     plt.ylabel("loss")
     plt.xlabel("epoch")
     plt.legend(["train", "val"], loc="upper left")
+    if save_model:
+        plt.savefig("loss-epoch.png", dpi=300)
     plt.show()
 
 
@@ -54,17 +58,18 @@ class SentimentAnalyserCallback(keras.callbacks.Callback):
 
 
 if __name__ == '__main__':
+
     BASE_DIR = "data/images/emotions"
     TRAIN_DIR = os.path.join(BASE_DIR, "train")
     TEST_DIR = os.path.join(BASE_DIR, "test")
     EMOTIONS = os.listdir(TRAIN_DIR)
     NUM_CLASSES = len(EMOTIONS)
     IMAGE_SIZE = (48, 48)
-    BATCH_SIZE = 64
-    EPOCHS = 120
+    BATCH_SIZE = 16
+    EPOCHS = 300
     SAVE_MODEL = True
     SHOW_TRAINING_STATISTICS = True
-    USE_SAVED_MODEL = True
+    USE_SAVED_MODEL = False
 
     print(f"Contents of train dir: {EMOTIONS}")
 
@@ -120,30 +125,30 @@ if __name__ == '__main__':
     plt.axis('off')
     plt.show()
 
-
     if USE_SAVED_MODEL:
         model = keras.models.load_model("models/sentiment_analyser_CNN.h5")
     else:
         model = keras.models.Sequential([
             keras.layers.Input(shape=(48, 48, 1)),
+            keras.layers.Conv2D(16, (3, 3), activation="relu"),
+            keras.layers.MaxPooling2D(),
             keras.layers.Conv2D(64, (3, 3), activation="relu"),
-            keras.layers.MaxPool2D(2, 2),
+            keras.layers.MaxPooling2D(),
             keras.layers.Conv2D(128, (3, 3), activation="relu"),
-            keras.layers.MaxPool2D(2, 2),
-            keras.layers.Conv2D(256, (3, 3), activation="relu"),
-            keras.layers.MaxPool2D(2, 2),
-            keras.layers.Flatten(),
-            keras.layers.Dense(64, activation="tanh"),
+            keras.layers.MaxPooling2D(),
+            keras.layers.GlobalAveragePooling2D(),
             keras.layers.BatchNormalization(),
-            keras.layers.Dense(256, activation="tanh", kernel_regularizer=keras.regularizers.l2(0.01)),
+            keras.layers.Dense(512, activation="relu"),
+            keras.layers.Dense(256, activation="relu"),
             keras.layers.BatchNormalization(),
-            keras.layers.Dense(512, activation="tanh", kernel_regularizer=keras.regularizers.l2(0.01)),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dense(32, activation="tanh"),
-            keras.layers.Dense(NUM_CLASSES, activation='softmax')
+            keras.layers.Dense(256, activation="relu"),
+            keras.layers.Dense(256, activation="relu"),
+            keras.layers.Dense(256, activation="relu"),
+            keras.layers.Dense(256, activation="relu"),
+            keras.layers.Dense(NUM_CLASSES, activation="softmax")
         ])
 
-        model.compile(optimizer=keras.optimizers.Adam(learning_rate=4e-4),
+        model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),
                       loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
@@ -153,11 +158,13 @@ if __name__ == '__main__':
         train_generator,
         epochs=EPOCHS,
         validation_data=validation_generator,
-        callbacks=[SentimentAnalyserCallback(SAVE_MODEL)]
+        callbacks=[
+            SentimentAnalyserCallback(SAVE_MODEL)
+        ]
     )
 
     if SHOW_TRAINING_STATISTICS:
-        plot_loss_accuracy(history)
+        plot_loss_accuracy(history, SAVE_MODEL)
 
     loss, acc = model.evaluate(test_generator)
     print(acc)
