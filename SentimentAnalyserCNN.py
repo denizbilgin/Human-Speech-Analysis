@@ -77,11 +77,6 @@ if __name__ == '__main__':
         rescale=1.0/255,
         horizontal_flip=True,
         rotation_range=40,
-        width_shift_range=0.2,
-        height_shift_range=0.2,
-        shear_range=0.2,
-        zoom_range=0.2,
-        fill_mode="nearest",
         validation_split=0.2
     )
     test_datagen = ImageDataGenerator(
@@ -138,17 +133,21 @@ if __name__ == '__main__':
             keras.layers.MaxPooling2D(),
             keras.layers.GlobalAveragePooling2D(),
             keras.layers.BatchNormalization(),
-            keras.layers.Dense(512, activation="relu"),
-            keras.layers.Dense(256, activation="relu"),
+            keras.layers.Dense(1024, activation="leaky_relu"),
+            keras.layers.Dense(256, activation="leaky_relu"),
             keras.layers.BatchNormalization(),
-            keras.layers.Dense(256, activation="relu"),
-            keras.layers.Dense(256, activation="relu"),
-            keras.layers.Dense(256, activation="relu"),
-            keras.layers.Dense(256, activation="relu"),
+            keras.layers.Dense(256, activation="leaky_relu"),
+            keras.layers.Dense(256, activation="leaky_relu"),
+            keras.layers.Dense(256, activation="leaky_relu"),
+            keras.layers.Dense(256, activation="leaky_relu"),
+            keras.layers.Dense(256, activation="leaky_relu"),
+            keras.layers.Dense(256, activation="leaky_relu"),
+            keras.layers.Dense(256, activation="leaky_relu"),
+            keras.layers.Dense(256, activation="leaky_relu"),
             keras.layers.Dense(NUM_CLASSES, activation="softmax")
         ])
 
-        model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),
+        model.compile(optimizer=keras.optimizers.SGD(learning_rate=1e-3),
                       loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
