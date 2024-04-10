@@ -53,7 +53,7 @@ class SentimentAnalyserCallback(keras.callbacks.Callback):
         print(message)
 
         if logs is not None and self.save_model:
-            self.model.save(f"models/sentiment_analyser_CNN{logs.get('accuracy')}Acc.h5")
+            self.model.save(f"models/sentiment_analyser_CNN{logs.get('accuracy')*100:.2f}Acc.h5")
             print("The model is successfully saved.")
 
 
@@ -70,13 +70,14 @@ if __name__ == '__main__':
     SAVE_MODEL = True
     SHOW_TRAINING_STATISTICS = True
     USE_SAVED_MODEL = False
+    COLOR_MODE = "grayscale"
 
     print(f"Contents of train dir: {EMOTIONS}")
 
     datagen = ImageDataGenerator(
         rescale=1.0/255,
         horizontal_flip=True,
-        rotation_range=40,
+        rotation_range=30,
         validation_split=0.2
     )
     test_datagen = ImageDataGenerator(
@@ -90,7 +91,7 @@ if __name__ == '__main__':
         target_size=IMAGE_SIZE,
         shuffle=True,
         subset="training",
-        color_mode="grayscale"
+        color_mode=COLOR_MODE
     )
     validation_generator = datagen.flow_from_directory(
         TRAIN_DIR,
@@ -99,7 +100,7 @@ if __name__ == '__main__':
         target_size=IMAGE_SIZE,
         shuffle=True,
         subset="validation",
-        color_mode="grayscale"
+        color_mode=COLOR_MODE
     )
     test_generator = test_datagen.flow_from_directory(
         TEST_DIR,
@@ -107,7 +108,7 @@ if __name__ == '__main__':
         class_mode="categorical",
         target_size=IMAGE_SIZE,
         shuffle=True,
-        color_mode="grayscale"
+        color_mode=COLOR_MODE
     )
 
     sample_batch = next(train_generator)
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     plt.show()
 
     if USE_SAVED_MODEL:
-        model = keras.models.load_model("models/sentiment_analyser_CNN.h5")
+        model = keras.models.load_model("models/sentiment_analyser_CNN63.52Acc.h5")
     else:
         model = keras.models.Sequential([
             keras.layers.Input(shape=(48, 48, 1)),
@@ -133,23 +134,34 @@ if __name__ == '__main__':
             keras.layers.MaxPooling2D(),
             keras.layers.GlobalAveragePooling2D(),
             keras.layers.BatchNormalization(),
-            keras.layers.Dense(1024, activation="leaky_relu"),
-            keras.layers.Dense(256, activation="leaky_relu"),
+            keras.layers.Dropout(0.3),
+            keras.layers.Dense(1024, kernel_regularizer=keras.regularizers.l1(l1=0.01), kernel_initializer="he_normal", use_bias=False),
             keras.layers.BatchNormalization(),
-            keras.layers.Dense(256, activation="leaky_relu"),
-            keras.layers.Dense(256, activation="leaky_relu"),
-            keras.layers.Dense(256, activation="leaky_relu"),
-            keras.layers.Dense(256, activation="leaky_relu"),
-            keras.layers.Dense(256, activation="leaky_relu"),
-            keras.layers.Dense(256, activation="leaky_relu"),
-            keras.layers.Dense(256, activation="leaky_relu"),
-            keras.layers.Dense(256, activation="leaky_relu"),
+            keras.layers.Activation("elu"),
+            keras.layers.Dense(256, kernel_initializer="he_normal", use_bias=False),
+            keras.layers.BatchNormalization(),
+            keras.layers.Activation("elu"),
+            keras.layers.Dense(256, kernel_initializer="he_normal", use_bias=False),
+            keras.layers.BatchNormalization(),
+            keras.layers.Activation("elu"),
+            keras.layers.Dense(256, kernel_regularizer=keras.regularizers.l1(l1=0.01), kernel_initializer="he_normal", use_bias=False),
+            keras.layers.BatchNormalization(),
+            keras.layers.Activation("elu"),
+            keras.layers.Dense(256, kernel_initializer="he_normal", use_bias=False),
+            keras.layers.BatchNormalization(),
+            keras.layers.Activation("elu"),
+            keras.layers.Dense(256, kernel_initializer="he_normal", use_bias=False),
+            keras.layers.BatchNormalization(),
+            keras.layers.Activation("elu"),
+            keras.layers.Dense(256, kernel_regularizer=keras.regularizers.l1(l1=0.01), kernel_initializer="he_normal", use_bias=False),
+            keras.layers.BatchNormalization(),
+            keras.layers.Activation("elu"),
             keras.layers.Dense(NUM_CLASSES, activation="softmax")
         ])
 
-        model.compile(optimizer=keras.optimizers.SGD(learning_rate=1e-3),
-                      loss='categorical_crossentropy',
-                      metrics=['accuracy'])
+    model.compile(optimizer=keras.optimizers.SGD(learning_rate=6e-3),
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
 
     print(model.summary())
 
