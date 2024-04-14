@@ -70,14 +70,13 @@ if __name__ == '__main__':
     SAVE_MODEL = True
     SHOW_TRAINING_STATISTICS = True
     USE_SAVED_MODEL = False
-    COLOR_MODE = "grayscale"
+    COLOR_MODE = "rgb"
 
     print(f"Contents of train dir: {EMOTIONS}")
 
     datagen = ImageDataGenerator(
         rescale=1.0/255,
         horizontal_flip=True,
-        rotation_range=30,
         validation_split=0.2
     )
     test_datagen = ImageDataGenerator(
@@ -125,41 +124,31 @@ if __name__ == '__main__':
         model = keras.models.load_model("models/sentiment_analyser_CNN63.52Acc.h5")
     else:
         model = keras.models.Sequential([
-            keras.layers.Input(shape=(48, 48, 1)),
+            keras.layers.Input(shape=(48, 48, 3)),
             keras.layers.Conv2D(16, (3, 3), activation="relu"),
             keras.layers.MaxPooling2D(),
             keras.layers.Conv2D(64, (3, 3), activation="relu"),
             keras.layers.MaxPooling2D(),
             keras.layers.Conv2D(128, (3, 3), activation="relu"),
             keras.layers.MaxPooling2D(),
+            keras.layers.Conv2D(256, (3, 3), activation="relu"),
             keras.layers.GlobalAveragePooling2D(),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dropout(0.3),
-            keras.layers.Dense(1024, kernel_regularizer=keras.regularizers.l1(l1=0.01), kernel_initializer="he_normal", use_bias=False),
-            keras.layers.BatchNormalization(),
-            keras.layers.Activation("elu"),
-            keras.layers.Dense(256, kernel_initializer="he_normal", use_bias=False),
-            keras.layers.BatchNormalization(),
-            keras.layers.Activation("elu"),
-            keras.layers.Dense(256, kernel_initializer="he_normal", use_bias=False),
-            keras.layers.BatchNormalization(),
-            keras.layers.Activation("elu"),
-            keras.layers.Dense(256, kernel_regularizer=keras.regularizers.l1(l1=0.01), kernel_initializer="he_normal", use_bias=False),
-            keras.layers.BatchNormalization(),
-            keras.layers.Activation("elu"),
-            keras.layers.Dense(256, kernel_initializer="he_normal", use_bias=False),
-            keras.layers.BatchNormalization(),
-            keras.layers.Activation("elu"),
-            keras.layers.Dense(256, kernel_initializer="he_normal", use_bias=False),
-            keras.layers.BatchNormalization(),
-            keras.layers.Activation("elu"),
-            keras.layers.Dense(256, kernel_regularizer=keras.regularizers.l1(l1=0.01), kernel_initializer="he_normal", use_bias=False),
-            keras.layers.BatchNormalization(),
-            keras.layers.Activation("elu"),
+            keras.layers.Dense(512, activation="elu", kernel_initializer="lecun_normal", kernel_regularizer=keras.regularizers.l2(0.016)),
+            keras.layers.Dropout(0.2),
+            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal"),
+            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
+            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal", kernel_regularizer=keras.regularizers.l2(0.016)),
+            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
+            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal"),
+            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
+            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal", kernel_regularizer=keras.regularizers.l2(0.016)),
+            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
+            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal", kernel_regularizer=keras.regularizers.l2(0.016)),
+            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
             keras.layers.Dense(NUM_CLASSES, activation="softmax")
         ])
 
-    model.compile(optimizer=keras.optimizers.SGD(learning_rate=6e-3),
+    model.compile(optimizer=keras.optimizers.Adamax(learning_rate=3e-3),
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
