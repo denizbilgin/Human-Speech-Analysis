@@ -59,12 +59,10 @@ class SentimentAnalyserCallback(keras.callbacks.Callback):
 
 if __name__ == '__main__':
 
-    BASE_DIR = "data/images/emotions"
-    TRAIN_DIR = os.path.join(BASE_DIR, "train")
-    TEST_DIR = os.path.join(BASE_DIR, "test")
-    EMOTIONS = os.listdir(TRAIN_DIR)
+    BASE_DIR = "data/images/emotions/"
+    EMOTIONS = os.listdir(BASE_DIR)
     NUM_CLASSES = len(EMOTIONS)
-    IMAGE_SIZE = (48, 48)
+    IMAGE_SIZE = (96, 96)
     BATCH_SIZE = 16
     EPOCHS = 300
     SAVE_MODEL = True
@@ -79,12 +77,9 @@ if __name__ == '__main__':
         horizontal_flip=True,
         validation_split=0.2
     )
-    test_datagen = ImageDataGenerator(
-        rescale=1.0/255
-    )
 
     train_generator = datagen.flow_from_directory(
-        TRAIN_DIR,
+        BASE_DIR,
         batch_size=BATCH_SIZE,
         class_mode="categorical",
         target_size=IMAGE_SIZE,
@@ -93,20 +88,12 @@ if __name__ == '__main__':
         color_mode=COLOR_MODE
     )
     validation_generator = datagen.flow_from_directory(
-        TRAIN_DIR,
+        BASE_DIR,
         batch_size=BATCH_SIZE,
         class_mode="categorical",
         target_size=IMAGE_SIZE,
         shuffle=True,
         subset="validation",
-        color_mode=COLOR_MODE
-    )
-    test_generator = test_datagen.flow_from_directory(
-        TEST_DIR,
-        batch_size=BATCH_SIZE,
-        class_mode="categorical",
-        target_size=IMAGE_SIZE,
-        shuffle=True,
         color_mode=COLOR_MODE
     )
 
@@ -124,27 +111,23 @@ if __name__ == '__main__':
         model = keras.models.load_model("models/sentiment_analyser_CNN63.52Acc.h5")
     else:
         model = keras.models.Sequential([
-            keras.layers.Input(shape=(48, 48, 3)),
+            keras.layers.Input(shape=(96, 96, 1 if COLOR_MODE == "grayscale" else 3)),
             keras.layers.Conv2D(16, (3, 3), activation="relu"),
             keras.layers.MaxPooling2D(),
             keras.layers.Conv2D(64, (3, 3), activation="relu"),
             keras.layers.MaxPooling2D(),
             keras.layers.Conv2D(128, (3, 3), activation="relu"),
             keras.layers.MaxPooling2D(),
+            keras.layers.Conv2D(128, (3, 3), activation="relu", padding="same"),
+            keras.layers.MaxPooling2D(),
             keras.layers.Conv2D(256, (3, 3), activation="relu"),
             keras.layers.GlobalAveragePooling2D(),
-            keras.layers.Dense(512, activation="elu", kernel_initializer="lecun_normal", kernel_regularizer=keras.regularizers.l2(0.016)),
-            keras.layers.Dropout(0.2),
-            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal"),
+            keras.layers.Dense(512, activation="elu", kernel_initializer="lecun_normal",
+                               kernel_regularizer=keras.regularizers.l2(0.016)),
+            keras.layers.Dropout(0.3),
             keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
-            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal", kernel_regularizer=keras.regularizers.l2(0.016)),
-            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
-            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal"),
-            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
-            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal", kernel_regularizer=keras.regularizers.l2(0.016)),
-            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
-            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal", kernel_regularizer=keras.regularizers.l2(0.016)),
-            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
+            keras.layers.Dense(256, activation="elu", kernel_initializer="lecun_normal",
+                               kernel_regularizer=keras.regularizers.l2(0.016)),
             keras.layers.Dense(NUM_CLASSES, activation="softmax")
         ])
 
@@ -166,6 +149,5 @@ if __name__ == '__main__':
     if SHOW_TRAINING_STATISTICS:
         plot_loss_accuracy(history, SAVE_MODEL)
 
-    loss, acc = model.evaluate(test_generator)
-    print(acc)
-
+    # loss, acc = model.evaluate(test_generator)
+    # print(acc)
