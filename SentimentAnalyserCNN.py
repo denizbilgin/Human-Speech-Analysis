@@ -9,13 +9,13 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 def plot_loss_accuracy(history, save_model):
     plt.figure(figsize=(12, 5))
-
+    print(history.history["f1_score"])
     # Model Accuracy
     plt.subplot(1, 2, 1)
-    plt.title("Model Accuracy")
-    plt.plot(history.history["accuracy"])
-    plt.plot(history.history["val_accuracy"])
-    plt.ylabel("Accuracy")
+    plt.title("Model F1 Score")
+    plt.plot(history.history["f1_score"])
+    plt.plot(history.history["val_f1_score"])
+    plt.ylabel("F1 Score")
     plt.xlabel("Epoch")
     plt.legend(["Train", "Val"], loc="upper left")
 
@@ -30,9 +30,10 @@ def plot_loss_accuracy(history, save_model):
 
     # Save the figure if required
     if save_model:
-        final_f1_score = history.history["val_f1"][-1]
-        file_name = f"metrics_epoch_f1_{final_f1_score:.2f}.png"
-        plt.savefig(file_name, dpi=300)
+        final_val_f1 = str(tf.reduce_mean(history.history["val_f1_score"][-1]).numpy())
+        final_val_f1 = final_val_f1[2:4] + "-" + final_val_f1[4:6]
+        file_name = f"statistics_of_{final_val_f1}F1_model.png"
+        plt.savefig("./model-statistics/" + file_name, dpi=300)
 
     plt.tight_layout()
     plt.show()
@@ -74,9 +75,10 @@ class SentimentAnalyserCallback(keras.callbacks.Callback):
         message = f"Training elapsed time was {str(hours)} hours, {minutes:4.1f} minutes, {seconds:4.2f} seconds."
         print(message)
 
-        last_val_f1 = tf.reduce_mean(logs.get("val_f1_score")).numpy()
+        last_val_f1 = str(tf.reduce_mean(logs.get("val_f1_score")).numpy())
+        last_val_f1 = last_val_f1[2:4] + "-" + last_val_f1[4:6]
         if logs is not None and self.save_model:
-            self.model.save(f"models/sentiment_analyser_CNN{last_val_f1*100:.2f}F1.h5")
+            self.model.save(f"models/sentiment_analyser_CNN{last_val_f1}F1.h5")
             print("The model is successfully saved.")
 
 if __name__ == '__main__':
@@ -85,7 +87,7 @@ if __name__ == '__main__':
     EMOTIONS = os.listdir(BASE_DIR)
     NUM_CLASSES = len(EMOTIONS)
     IMAGE_SIZE = (96, 96)
-    BATCH_SIZE = 16
+    BATCH_SIZE = 32
     EPOCHS = 50
     SAVE_MODEL = True
     USE_SAVED_MODEL = False
@@ -142,34 +144,36 @@ if __name__ == '__main__':
     plt.show()
 
     if USE_SAVED_MODEL:
-        model = keras.models.load_model("models/sentiment_analyser_CNN63.52Acc.h5")
+        model = keras.models.load_model("models/sentiment_analyser_CNN.h5")
+        print(model.summary())
     else:
         # Creating deep convolutional neural network architecture
         model = keras.models.Sequential([
             keras.layers.Input(shape=(96, 96, 1 if COLOR_MODE == "grayscale" else 3)),
-            keras.layers.Conv2D(64, (3, 3), activation="relu"),
+            keras.layers.Conv2D(32, (3, 3), activation="relu"),
             keras.layers.MaxPooling2D(),
-            keras.layers.Conv2D(128, (3, 3), activation="relu"),
+            keras.layers.Conv2D(64, (3, 3), activation="relu", padding="same"),
             keras.layers.MaxPooling2D(),
-            keras.layers.Conv2D(128, (3, 3), activation="relu"),
+            keras.layers.Conv2D(128, (3, 3), activation="relu", padding="same"),
             keras.layers.MaxPooling2D(),
-            keras.layers.Conv2D(256, (3, 3), activation="relu"),
+            keras.layers.Conv2D(256, (3, 3), activation="relu", padding="same"),
             keras.layers.MaxPooling2D(),
+            keras.layers.Conv2D(512, (3, 3), activation="relu"),
             keras.layers.Flatten(),
-            keras.layers.Dense(128, activation="selu"),
-            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
-            keras.layers.Dense(128, activation="selu"),
-            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
-            keras.layers.Dense(128, activation="selu"),
-            keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001),
-            keras.layers.Dense(128, activation="selu"),
+            keras.layers.Dense(1024, activation="relu", kernel_regularizer=keras.regularizers.l1_l2()),
+            keras.layers.Dropout(0.4),
+            keras.layers.BatchNormalization(),
+            keras.layers.Dense(64, activation="relu", kernel_regularizer=keras.regularizers.l1_l2()),
+            keras.layers.BatchNormalization(),
             keras.layers.Dense(NUM_CLASSES, activation="softmax")
         ])
 
+        print(model.summary())
+
         # Compiling and setting the model
-        model.compile(optimizer=keras.optimizers.Adamax(learning_rate=3e-3),
+        model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4),
                       loss='categorical_crossentropy',
-                      metrics=['f1_score'])
+                      metrics=['f1_score', "accuracy"])
 
         history = model.fit(
             train_generator,
@@ -183,8 +187,6 @@ if __name__ == '__main__':
         if SHOW_TRAINING_STATISTICS:
             # Showing statistics about training and the model
             plot_loss_accuracy(history, SAVE_MODEL)
-
-    print(model.summary())
 
     # Testing the model by dummy generator
     test_generator = datagen.flow_from_directory(
